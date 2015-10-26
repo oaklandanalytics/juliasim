@@ -1,7 +1,7 @@
 using DataFrames, GLM, JLD
 
 # FIXME - shouldn't be here
-cd("$(homedir())/src/julia")
+cd("$(homedir())/src/juliasim")
 
 
 ##############
@@ -24,20 +24,15 @@ end
 function households()
   h = jld()["households"][[:household_id, :income, :persons, :tenure,
                            :hworkers, :building_id]]
-  h[:income_quartile] = 1
-  breaks = quantile(h[:income])
-  # FIXME qcut in julia?
-  for q in 2:4
-    h[breaks[q] .< h[:income] .<= breaks[q+1], :income_quartile] = q
-  end
+  h[:income_quartile] = cut(h[:income], 4)
   h
 end
 
 
 function parcels()
   # shape_area is in meters
-  jld()["parcels.csv"][[:parcel_id, :zone_id, :county_id, :geom_id,
-                        :proportion_undevelopable, :x, :y, :shape_area]]
+  p = jld()["parcels.csv"][[:parcel_id, :zone_id, :county_id, :geom_id,
+                            :proportion_undevelopable, :x, :y, :shape_area]]
 end
 
 
@@ -123,6 +118,7 @@ end
 function household_transition(hh_df, year)
 
   hc = readtable("household_controls.csv")
+
   # get the row for this year in the controls
   row = hc[hc[:year] .== year, :]
 
@@ -131,8 +127,12 @@ function household_transition(hh_df, year)
     # get the target
     target = row[symbol(string("q", quartile, "_households"))][1]
 
+    println("Target is $target")
+
+    l = levels(hh_df[:income_quartile])[quartile]
+
     # current quartile
-    indexes = find(hh_df[:income_quartile] .== quartile)
+    indexes = find(hh_df[:income_quartile] .== l)
 
     target -= size(indexes, 1)
     
@@ -151,6 +151,7 @@ function household_transition(hh_df, year)
   println(countmap(hh_df[:income_quartile]))
   
   hh_df
+
 end
 
 
@@ -201,6 +202,7 @@ end
 
 
 # this goes from csvs to binary for quick i/o
+# you'll probably need to write these csvs from the hdf5 in python
 function csvs_to_jld()
   jldopen("bayarea_v3.jld", "w") do file
     write(file, "parcels", readtable("parcels.csv"))
@@ -218,8 +220,8 @@ function jld()
   CACHE["jld"]
 end
 
-CACHE = Dict()
 
+CACHE = Dict()
 
 # the last line gets returned
 "HAPPY JULIASIM-ING!"
