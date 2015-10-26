@@ -1,7 +1,5 @@
 using DataFrames, GLM, JLD
 
-# FIXME - reads csvs, would probably be faster to read binary
-
 # FIXME - shouldn't be here
 cd("$(homedir())/src/julia")
 
@@ -10,8 +8,6 @@ cd("$(homedir())/src/julia")
 ### TABLES ###
 ##############
 
-# keep only the columns you need - this reduces memory use and also defines
-# a schema of necessary columns you need in the data
 
 function buildings()
   b = jld()["buildings"][[:building_id, :parcel_id, :residential_units,
@@ -44,9 +40,11 @@ function parcels()
                         :proportion_undevelopable, :x, :y, :shape_area]]
 end
 
+
 #############
 ### JOINS ###
 #############
+
 
 function parcels_zones(P, Z)
   join(P, Z, on = :zone_id)
@@ -67,9 +65,11 @@ function jobs_buildings(J, B)
   join(J, B, on = :building_id)
 end
 
+
 #################
 ### VARIABLES ###
 #################
+
 
 function zone_aggregations(H, B, P)
   B_P = buildings_parcels(B, P)
@@ -94,9 +94,11 @@ function zone_aggregations(H, B, P)
   join(Z1, Z2, on = :zone_id)
 end
 
+
 ##############
 ### MODELS ###
 ##############
+
 
 # FIXME how to do expressions in the formula?
 rsh_formula = redfin_sale_price ~ building_sqft + total_residential_units +
@@ -118,19 +120,16 @@ function rsh_simulate(df)
 end
 
 
-# FIXME value_counts in julia
-
 function household_transition(hh_df, year)
 
   hc = readtable("household_controls.csv")
   # get the row for this year in the controls
   row = hc[hc[:year] .== year, :]
-  c = 0
+
   for quartile in 1:4
 
     # get the target
     target = row[symbol(string("q", quartile, "_households"))][1]
-    c += target
 
     # current quartile
     indexes = find(hh_df[:income_quartile] .== quartile)
@@ -145,10 +144,12 @@ function household_transition(hh_df, year)
     elseif target < 0
       hh_df = deleterows(hh_df, sample(indexes, target*-1, replace=false))
     end
+
   end
-  assert(len(hh_df) == c)
+
   println("Countmap by income quartile:")
   println(countmap(hh_df[:income_quartile]))
+  
   hh_df
 end
 
@@ -165,6 +166,7 @@ function feasibility(P, P_B)
     )
   end
 end
+
 
 ###############
 ### MODULES ###
